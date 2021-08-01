@@ -36,8 +36,13 @@ class User extends Authenticatable
 	 * @var array
 	 */
 	protected $hidden = [
+		'id',
 		'password', 
 		'remember_token',
+		'verify_key',
+		'refresh_token',
+		'created_at',
+		'updated_at',
 	];
 
 	/**
@@ -60,11 +65,12 @@ class User extends Authenticatable
 	];
 
 	/**
-	 *
+	 * encrypt password string and prepare to save
+	 * @param string $pass
 	 */
 	public function setPasswordAttribute($password)
 	{
-		if ( !empty($password) ) {
+		if (!empty($password)) {
 			$this->attributes['password'] = bcrypt($password);
 		}
 	}

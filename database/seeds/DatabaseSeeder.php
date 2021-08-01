@@ -13,10 +13,10 @@ class DatabaseSeeder extends Seeder
     public function run()
     {
         DB::table('users')->insert([
-			'name' => 'engine',
-			'email' => 'service.engine@drivedatum.com',
+			'name' => 'service',
+			'email' => 'service@drivedatum.com',
 			'email_verified_at' => now(),
-			'password' => bcrypt('engIneUs-e-r'),
+			'password' => bcrypt('qewrvv34RE'),
 		]);
     }
 }
