@@ -117,13 +117,21 @@ class User extends Repository
 	public function register(array $data = []) : array
 	{
 		try {
+			$modelLast = $this->model
+				->select([ 'id' ])
+				->orderByDesc('id')
+				->first();
 			$config = [
 				'password' => $data['password'],
 				'email' => $data['email'],
 			];
 			$signature = base64_encode(json_encode($config));
 			$data['verify_key'] = $signature;
-			$user = $this->model->create($data);
+			$user = $this->model->create(array_merge($data, [
+				'unique_name' => $modelLast
+					? 'user'. $modelLast->id
+					: 'user1',
+			]));
 
 			\Mail::to($data['email'])->send(new VerifyAfterRegister($data));
 			return $user->toArray();

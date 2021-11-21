@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
     {
         DB::table('users')->insert([
 			'name' => 'service',
+            'unique_name' => 'user1',
 			'email' => 'service@drivedatum.com',
 			'email_verified_at' => now(),
 			'password' => bcrypt('qewrvv34RE'),
