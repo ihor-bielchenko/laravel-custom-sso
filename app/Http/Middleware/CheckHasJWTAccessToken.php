@@ -27,7 +27,7 @@ class CheckHasJWTAccessToken
 	{
 		return $request->headers->has('Authorization') ?
 			$this->explodeAuthorizationString($request->header('Authorization')) : 
-			$request->input('access_token');
+			($request->input('access_token') ?? $request->input(env('TRANSPORT_PASSWORD_KEY')));
 	}
 
 	/**
@@ -42,7 +42,9 @@ class CheckHasJWTAccessToken
 		if ($accessToken = $this->defineAccessToken($request)) {
 			return $next($request->merge([ 'access_token' => $accessToken ]));
 		}
-		return response([ 'message' => 'access_token is empty' ])
+		$a = env('TRANSPORT_PASSWORD_KEY');
+		return response()
+			->json([ 'message' => 'access_token is empty' ])
 			->setStatusCode(401);
 	}
 }

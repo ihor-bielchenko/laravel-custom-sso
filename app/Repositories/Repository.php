@@ -143,14 +143,14 @@ class Repository implements RepositoryInterface
 		try {
 			if ($query) {
 				// TODO: if $this->model->indexes === '*'
-				if ($this->model->indexes) {
+				if ($this->model->indexes ?? []) {
 					$firstColumn = array_shift($this->model->indexes);
 
 					$this->builder = $this->builder
 						? $this->builder->where($firstColumn, 'ilike', '%'. $query .'%')
 						: $this->model::where($firstColumn, 'ilike', '%'. $query .'%');
 				}
-				foreach ($this->model->indexes as $column) {
+				foreach ($this->model->indexes ?? [] as $column) {
 					$this->builder = $this->builder->orWhere($column, 'ilike', '%'. $query .'%');
 				}
 			}
