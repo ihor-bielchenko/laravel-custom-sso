@@ -3,6 +3,7 @@
 namespace App\Transport;
 
 use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\Log;
 
 class Transport implements TransportInterface
 {
@@ -22,7 +23,6 @@ class Transport implements TransportInterface
 	public function __construct()
 	{
 		$this->client = new \GuzzleHttp\Client();
-		$this->services = new ServicesCollection();
 		$this->_createState();
 	}
 
@@ -48,23 +48,20 @@ class Transport implements TransportInterface
 	 */
 	private function _createState()
 	{
-		Redis::select(config('REDIS_DB'));
-		$redisKeys = Redis::keys('transport_replicas_*');
+		Redis::select(env('REDIS_DB'));
+		$redisKeys = Redis::keys('TRANSPORT_REPLICAS_*');
+		$this->services = [];
 
 		foreach ($redisKeys as $key) {
-			$explode = explode('transport_replicas_', $key);
+			$explode = explode('TRANSPORT_REPLICAS_', $key);
 			$name = $explode[count($explode) - 1];
 
-			if (!$this->services[$name]) {
-				$replicas = Redis::lrange('transport_replicas_'. $name, 0, -1);
-
-				$this->services->setItem(new Service([
+			if (!isset($this->services[$name])) {
+				$this->services[$name] = [
 					'name' => $name,
-					'port' => $port,
-					'protocol' => $protocol,
-					'domain' => $domain,
-					'replicas' => (Redis::lrange('transport_replicas_'. $name, 0, -1) ?: []),
-				]));
+					'replicas' => (Redis::lrange('TRANSPORT_REPLICAS_'. $name, 0, -1) ?: []),
+					'routes' => [],
+				];
 			}
 		}
 	}
@@ -75,7 +72,9 @@ class Transport implements TransportInterface
 	public function cached(string $serviceName, string $routePath) : array
 	{
 		try {
-			return $this->services->getItem($serviceName)->routes[$routePath];
+			return isset($this->services[$serviceName]['routes'][$routePath])
+				? $this->services[$serviceName]['routes'][$routePath]
+				: [];
 		}
 		catch (\Exception $exception) {
 			return [];
@@ -87,15 +86,18 @@ class Transport implements TransportInterface
 	 */
 	public function request(string $method = 'GET', string $serviceName, string $routePath, array $props) : array
 	{
-		$service = $this->services->getItem($serviceName);
-		$replicas = $service->replicas;
-		$currentCeplica = explode(',', env('APP_REPLICA'));
+		$service = $this->services[$serviceName];
+		$replicas = $service['replicas'];
+		$currentReplicas = explode(',', env('APP_REPLICA'));
+		$currentReplica = Transport::url(env('APP_PROTOCOL'), env('APP_DOMAIN'), $currentReplicas[0], (int) env('APP_PORT'));
 		$responseContent = null;
 		$responseData = null;
+		$path = '';
+		$statusCode = 500;
 		$i = 0;
 
-		foreach ($replicas as $replica) {
-			if ($replica !== $currentCeplica) {
+		foreach ($replicas as $replica) {		
+			if ($replica !== $currentReplica) {
 				$requestUrl = $replica .'/api/'. $routePath;
 				try {
 					$response = $this->client->request($method, $requestUrl, $props);
@@ -107,10 +109,7 @@ class Transport implements TransportInterface
 					}
 					$i++;
 					continue;
-				}
-				
-				$statusCode = 0;
-			
+				}			
 				try {
 					$responseContent = $response->getBody()->getContents();
 				}
@@ -143,6 +142,7 @@ class Transport implements TransportInterface
 
 				try {
 					$responseData = (json_decode($responseContent, true))['data'];
+					$path = $requestUrl;
 				}
 				catch (\Exception $exception) {
 					if (!$responseData) {
@@ -154,14 +154,17 @@ class Transport implements TransportInterface
 						continue;
 					}
 				}
-
-				if (!isset($service->routes[$routePath])) {
-					$service->routes = [];
+				if (!isset($service['routes'][$routePath])) {
+					$service['routes'] = [];
 				}
-				$service->routes[$routePath] = $responseData;
+				$service['routes'][$routePath] = $responseData;
 			}
 		}
-		return $responseData;
+		return [
+			'statusCode' => $statusCode,
+			'data' => $responseData,
+			'url' => $path,
+		];
 	}
 
 	/**
@@ -181,8 +184,10 @@ class Transport implements TransportInterface
 	 */
 	public function post(string $serviceName, string $routePath, array $props = []) : array
 	{
+		// print_r($serviceName);
+
 		return $this->request('POST', $serviceName, $routePath, [
-			'body' => array_merge($props, [
+			'form_params' => array_merge($props, [
 				env('TRANSPORT_PASSWORD_KEY') => env('TRANSPORT_PASSWORD_VALUE'),
 			]),
 		]);
@@ -194,7 +199,7 @@ class Transport implements TransportInterface
 	public function patch(string $serviceName, string $routePath, array $props = []) : array
 	{
 		return $this->request('PATCH', $serviceName, $routePath, [
-				'body' => array_merge($props, [
+				'form_params' => array_merge($props, [
 					env('TRANSPORT_PASSWORD_KEY') => env('TRANSPORT_PASSWORD_VALUE'),
 				]),
 			]);
@@ -206,7 +211,7 @@ class Transport implements TransportInterface
 	public function put(string $serviceName, string $routePath, array $props = []) : array
 	{
 		return $this->request('PUT', $serviceName, $routePath, [
-				'body' => array_merge($props, [
+				'form_params' => array_merge($props, [
 					env('TRANSPORT_PASSWORD_KEY') => env('TRANSPORT_PASSWORD_VALUE'),
 				]),
 			]);

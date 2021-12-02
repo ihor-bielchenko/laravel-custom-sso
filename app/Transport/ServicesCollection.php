@@ -20,6 +20,7 @@ class ServicesCollection implements ServicesCollectionInterface
 	public function __construct()
 	{
 		$this->length = 0;
+		$this->_names = [];
 	}
 
 	/**
@@ -33,6 +34,8 @@ class ServicesCollection implements ServicesCollectionInterface
 
 	public function getItem(string $serviceName)
 	{
-		return $this->_names[$serviceName];
+		return isset($this->_names[$serviceName])
+			? $this->_names[$serviceName]
+			: null;
 	}
 }
