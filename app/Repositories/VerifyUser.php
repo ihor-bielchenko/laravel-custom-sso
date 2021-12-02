@@ -3,7 +3,7 @@
 namespace App\Repositories;
 
 use Illuminate\Support\Facades\Http;
-use App\Jobs\SignUpPodcast;
+use App\Jobs\JobSignUp;
 
 trait VerifyUser {
 	/**
@@ -33,9 +33,7 @@ trait VerifyUser {
 
 				$jwt = $this->jwt->auth($user, $decode['password']);
 
-				SignUpPodcast::dispatch($user, $jwt)
-					->allOnQueue('signup')
-					->delay(now()->addSeconds(2));
+				JobSignUp::dispatchAfterResponse($user, $jwt);
 
 				return $jwt;
 			}

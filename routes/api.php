@@ -7,6 +7,7 @@ use App\Http\Middleware\CheckPasswordsMismatch;
 use App\Http\Middleware\CheckHasJWTAccessToken;
 use App\Http\Middleware\CheckHasJWTRefreshToken;
 use App\Http\Middleware\CheckJWTRefreshToken;
+use App\Http\Middleware\CheckJWTAccessToken;
 use App\Http\Middleware\CheckSourceIsCore;
 use App\Http\Middleware\SetProjectUsersByAuth;
 use App\Http\Middleware\CheckProjectIdsByAuth;
@@ -45,3 +46,10 @@ Route::get('/refresh', 'User@refresh')
 
 // recovery user access
 Route::post('/recovery', 'User@recovery');
+
+Route::middleware([ 
+	CheckHasJWTAccessToken::class,
+	CheckJWTAccessToken::class,
+])->group(function () {
+	Route::get('/user', 'User@oneByAccessToken');
+});

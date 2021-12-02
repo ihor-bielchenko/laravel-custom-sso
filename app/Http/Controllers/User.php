@@ -18,6 +18,8 @@ use App\Http\Resources\Recovery as ResourceRecovery;
 use App\Http\Resources\Refresh as ResourceRefresh;
 use App\Http\Resources\Error as ResourceError;
 use App\Http\Resources\Update as ResourceUpdate;
+use App\Http\Resources\GetOne as ResourceGetOne;
+use App\Http\Resources\GetMany as ResourceGetMany;
 use Illuminate\Http\Request;
 
 class User extends Controller
@@ -35,6 +37,29 @@ class User extends Controller
 	public function __construct(Model $user)
 	{
 		$this->repository = new Repository($user);
+	}
+
+	/**
+	 * Get collection
+	 * @param Illuminate\Http\Request $request
+	 * @return Illuminate\Http\Response
+	 */
+	public function oneByAccessToken(Request $request)
+	{
+		try {
+			$credentials = $request->only(
+				'auth_id',
+				'auth_email',
+				'auth_services'
+			);
+			$model = $this->repository->getOne($credentials['auth_id'], $credentials);
+
+			return response($model);
+			return (new ResourceGetOne($many))->response();
+		}
+		catch (\Exception $exception) {
+			return $this->responseError($exception);
+		}
 	}
 
 	/**

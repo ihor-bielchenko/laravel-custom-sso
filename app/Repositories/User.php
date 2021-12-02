@@ -129,7 +129,7 @@ class User extends Repository
 			$data['verify_key'] = $signature;
 			$user = $this->model->create(array_merge($data, [
 				'unique_name' => $modelLast
-					? 'user'. $modelLast->id
+					? ('user'. ($modelLast->id + 1))
 					: 'user1',
 			]));
 
